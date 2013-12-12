@@ -11,8 +11,6 @@ import edu.cmu.cs.lti.zhengzhl.model.ChartCell;
 import edu.cmu.cs.lti.zhengzhl.model.Grammar;
 import edu.cmu.cs.lti.zhengzhl.model.NonTerminal;
 import edu.cmu.cs.lti.zhengzhl.model.Token;
-import edu.cmu.cs.lti.zhengzhl.model.NonTerminal.Direction;
-import edu.cmu.cs.lti.zhengzhl.model.NonTerminal.LifeCycle;
 
 /**
  * @author Zhengzhong Liu, Hector
@@ -51,7 +49,7 @@ public class InsideOutside {
 	private boolean fillLexicalCells(List<Token> tokens) {
 		for (int i = 0; i < tokens.size(); i++) {
 			Token token = tokens.get(i);
-			NonTerminal nt = NonTerminal.fromToken(token.getPos());
+			NonTerminal nt = NonTerminal.fromToken(token);
 			notSealedChartAlpha[i][i + 1].put(nt, new ChartCell(i, nt));
 		}
 		return true; // no oov cases, although it is garunteed here.
@@ -62,14 +60,14 @@ public class InsideOutside {
 			int j = i + 1;
 			// do unary for span (i,j): not seal (right) to half seal (left)
 			for (NonTerminal notSealedNt : notSealedChartAlpha[i][j].keySet()) {
-				NonTerminal halfSealdNt = new NonTerminal(notSealedNt.getSymbol(), false, LifeCycle.HALF_SEALED, Direction.LEFT);
+				NonTerminal halfSealdNt = NonTerminal.makeHalfSealed(notSealedNt);
 				halfSealedChartAlpha[i][j].put(halfSealdNt, new ChartCell(i, j, halfSealdNt, grammar.getStopProb(notSealedNt)));
 			}
 
 			// do unary for span (i,j) : half seal to seal
 			for (NonTerminal halfSealedNt : halfSealedChartAlpha[i][j].keySet()) {
 				// Direction for a sealed one is arbitrary. Lefting them all
-				NonTerminal sealedNt = new NonTerminal(halfSealedNt.getSymbol(), false, LifeCycle.SEALED, Direction.LEFT);
+				NonTerminal sealedNt = NonTerminal.makeSealed(halfSealedNt);
 				sealedChartAlpha[i][j].put(sealedNt, new ChartCell(i, j, sealedNt, grammar.getStopProb(halfSealedNt)));
 			}
 		}
@@ -121,7 +119,7 @@ public class InsideOutside {
 
 				// do unary for span (i,j): not seal (right) to half seal (left)
 				for (NonTerminal notSealedNt : notSealedChartAlpha[i][j].keySet()) {
-					NonTerminal halfSealdNt = new NonTerminal(notSealedNt.getSymbol(), false, LifeCycle.HALF_SEALED, Direction.LEFT);
+					NonTerminal halfSealdNt = NonTerminal.makeHalfSealed(notSealedNt);
 					if (halfSealedChartAlpha[i][j].containsKey(halfSealdNt)) {
 						halfSealedChartAlpha[i][j].get(halfSealdNt).aggregate(grammar.getStopProb(notSealedNt));
 					} else {
@@ -131,7 +129,7 @@ public class InsideOutside {
 
 				// do unary for span (i,j) : half seal to seal
 				for (NonTerminal halfSealedNt : halfSealedChartAlpha[i][j].keySet()) {
-					NonTerminal sealedNt = new NonTerminal(halfSealedNt.getSymbol(), false, LifeCycle.SEALED, Direction.LEFT);
+					NonTerminal sealedNt = NonTerminal.makeSealed(halfSealedNt);
 					if (sealedChartAlpha[i][j].containsKey(sealedNt)) {
 						sealedChartAlpha[i][j].get(sealedNt).aggregate(grammar.getStopProb(halfSealedNt));
 					} else {

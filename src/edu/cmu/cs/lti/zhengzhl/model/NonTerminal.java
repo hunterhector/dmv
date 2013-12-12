@@ -18,27 +18,50 @@ public class NonTerminal implements Comparable<NonTerminal> {
 	private LifeCycle lifeCyle;
 	private Direction direction;
 
+	private int id;
+
 	public enum Direction {
-		LEFT, RIGHT
+		LEFT, RIGHT, NONE
 	}
 
 	public enum LifeCycle {
 		NOT_SEALED, HALF_SEALED, SEALED
 	}
 
-	public NonTerminal(String symbol, boolean hasChild, LifeCycle lc, Direction d) {
+	public NonTerminal(String symbol, boolean hasChild, LifeCycle lc, Direction d, int id) {
 		this.symbol = symbol;
 		this.hasChild = hasChild;
 		this.lifeCyle = lc;
 		this.direction = d;
+		this.id = id;
 	}
 
-	public static NonTerminal fromToken(String token) {
-		return new NonTerminal(token, false, LifeCycle.NOT_SEALED, Direction.RIGHT);
+	public static NonTerminal fromToken(Token token) {
+		return new NonTerminal(token.getPos(), false, LifeCycle.NOT_SEALED, Direction.RIGHT, token.getId());
 	}
 
 	public static NonTerminal getHasChildVersion(NonTerminal nt) {
-		return new NonTerminal(nt.getSymbol(), true, nt.lifeCyle, nt.direction);
+		return new NonTerminal(nt.getSymbol(), true, nt.getLifeCyle(), nt.getDirection(), nt.getId());
+	}
+
+	public static NonTerminal makeHalfSealed(NonTerminal nt) {
+		if (nt.getLifeCyle().equals(LifeCycle.NOT_SEALED)) {
+			return new NonTerminal(nt.getSymbol(), false, LifeCycle.HALF_SEALED, Direction.LEFT, nt.getId());
+		} else {
+			throw new IllegalArgumentException("Cannot only make not_sealed to half_sealed");
+		}
+	}
+
+	public static NonTerminal makeSealed(NonTerminal nt) {
+		if (nt.getLifeCyle().equals(LifeCycle.HALF_SEALED)) {
+			return new NonTerminal(nt.getSymbol(), false, LifeCycle.SEALED, Direction.NONE, nt.getId());
+		} else {
+			throw new IllegalArgumentException("Cannot only make half_sealed to sealed");
+		}
+	}
+
+	public int getId() {
+		return id;
 	}
 
 	public String getSymbol() {
@@ -59,7 +82,7 @@ public class NonTerminal implements Comparable<NonTerminal> {
 
 	@Override
 	public int hashCode() {
-		return new HashCodeBuilder(17, 31).append(symbol).append(direction).append(lifeCyle).toHashCode();
+		return new HashCodeBuilder(17, 31).append(symbol).append(direction).append(lifeCyle).append(id).toHashCode();
 	}
 
 	@Override
@@ -73,7 +96,8 @@ public class NonTerminal implements Comparable<NonTerminal> {
 
 		NonTerminal o = (NonTerminal) obj;
 
-		return new EqualsBuilder().append(symbol, o.getSymbol()).append(direction, o.getDirection()).append(lifeCyle, o.getLifeCyle()).isEquals();
+		return new EqualsBuilder().append(symbol, o.getSymbol()).append(direction, o.getDirection()).append(lifeCyle, o.getLifeCyle())
+				.append(id, o.getId()).isEquals();
 	}
 
 	@Override

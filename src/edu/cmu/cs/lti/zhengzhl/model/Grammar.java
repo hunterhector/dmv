@@ -24,14 +24,17 @@ public class Grammar {
 
 	protected Map<NonTerminal, Double> noChildStopProbs;
 
-	// P(Y|X,direction) store here
-	protected Table<NonTerminal, NonTerminal, Double> attachments;
+	// P(Y|X,left) store here
+	protected Table<String, String, Double> leftAttachments;
+
+	protected Table<String, String, Double> rightAttachments;
 
 	public Grammar(int initializationMethod, List<List<Token>> sentences) {
 		hasChildStopProbs = new HashMap<NonTerminal, Double>();
 		noChildStopProbs = new HashMap<NonTerminal, Double>();
 
-		attachments = HashBasedTable.create();
+		leftAttachments = HashBasedTable.create();
+		rightAttachments = HashBasedTable.create();
 
 		if (initializationMethod == 0) {
 			naiveLazyInitailizaton();
@@ -83,12 +86,17 @@ public class Grammar {
 	}
 
 	public double getAttachmentProb(NonTerminal head, NonTerminal child) {
-		if (attachments.contains(head, child)) {
-			return attachments.get(head, child);
+		Table<String, String, Double> attachments = head.getDirection().equals(Direction.LEFT) ? leftAttachments : rightAttachments;
+
+		String headSymbol = head.getSymbol();
+		String childSymbol = child.getSymbol();
+
+		if (attachments.contains(headSymbol, childSymbol)) {
+			return attachments.get(headSymbol, childSymbol);
 		} else {
 			if (isNaiveInitialized) {
 				double sampleLogProb = Math.log(0.5);
-				attachments.put(head, child, sampleLogProb);
+				attachments.put(headSymbol, childSymbol, sampleLogProb);
 				return sampleLogProb;
 			} else {
 				throw new IllegalArgumentException("Seems we are having OOV in unsupervised setting, how is that possible?");
