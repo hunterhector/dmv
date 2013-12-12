@@ -33,11 +33,19 @@ public class NonTerminal implements Comparable<NonTerminal> {
 		this.direction = d;
 	}
 
+	public static NonTerminal fromToken(String token) {
+		return new NonTerminal(token, false, LifeCycle.NOT_SEALED, Direction.RIGHT);
+	}
+
+	public static NonTerminal getHasChildVersion(NonTerminal nt) {
+		return new NonTerminal(nt.getSymbol(), true, nt.lifeCyle, nt.direction);
+	}
+
 	public String getSymbol() {
 		return symbol;
 	}
 
-	public boolean isHasChild() {
+	public boolean hasChild() {
 		return hasChild;
 	}
 
@@ -71,6 +79,18 @@ public class NonTerminal implements Comparable<NonTerminal> {
 	@Override
 	public int compareTo(NonTerminal nt) {
 		return this.symbol.compareTo(nt.symbol);
+	}
+
+	public boolean canAttach(boolean onTheRight) {
+		if (direction.equals(Direction.RIGHT) && onTheRight) {
+			return true;
+		}
+
+		if (direction.equals(Direction.LEFT) && !onTheRight) {
+			return true;
+		}
+
+		return false;
 	}
 
 }

@@ -3,6 +3,9 @@
  */
 package edu.cmu.cs.lti.zhengzhl.model;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
 import edu.cmu.cs.lti.zhengzhl.model.NonTerminal.Direction;
 import edu.cmu.cs.lti.zhengzhl.model.NonTerminal.LifeCycle;
 
@@ -29,9 +32,9 @@ public class ChartCell implements Comparable<ChartCell> {
 	 * @param i
 	 * @param terminal
 	 */
-	public ChartCell(int i, String terminal) {
+	public ChartCell(int i, NonTerminal nt) {
 		this.span = new Span(i, i + 1);
-		this.nonTerminal = new NonTerminal(terminal, false, LifeCycle.NOT_SEALED, Direction.RIGHT);
+		this.nonTerminal = nt;
 		this.children = new ChartCell[0];
 		this.marginalLogProb = 0.0;
 	}
@@ -45,15 +48,19 @@ public class ChartCell implements Comparable<ChartCell> {
 	 * @param lhs
 	 * @param children
 	 */
-	public ChartCell(int i, int j, RuleLhs lhs, ChartCell... children) {
+	public ChartCell(int i, int j, NonTerminal nt, double logProb, ChartCell... children) {
 		this.span = new Span(i, j);
-		this.nonTerminal = lhs.getNonTerminal();
+		this.nonTerminal = nt;
 		this.children = children;
 
-		this.marginalLogProb = lhs.getLogProb();
+		this.marginalLogProb = logProb;
 		for (ChartCell c : children) {
 			this.marginalLogProb += c.getMarginalLogProb();
 		}
+	}
+
+	public void aggregate(double logProb) {
+		this.marginalLogProb += logProb;
 	}
 
 	public boolean hasNoChildren() {
@@ -105,6 +112,23 @@ public class ChartCell implements Comparable<ChartCell> {
 			return children[index].getTo();
 	}
 
+	public int hashCode() {
+		return new HashCodeBuilder(17, 31).append(nonTerminal).append(span).toHashCode();
+	}
+
+	public boolean equals(Object obj) {
+		if (obj == null)
+			return false;
+		if (obj == this)
+			return true;
+		if (!(obj instanceof ChartCell))
+			return false;
+
+		ChartCell cell = (ChartCell) obj;
+
+		return new EqualsBuilder().append(nonTerminal, cell.getNonTerminal()).append(span, cell.getSpan()).isEquals();
+	}
+
 	@Override
 	public int compareTo(ChartCell c) {
 		int spanCompare = span.compareTo(c.getSpan());
@@ -114,4 +138,13 @@ public class ChartCell implements Comparable<ChartCell> {
 			return nonTerminal.compareTo(c.getNonTerminal());
 		}
 	}
+
+	public boolean onTheRight(ChartCell c) {
+		return c.getFrom() > this.getTo();
+	}
+
+	public boolean onTheLeft(ChartCell c) {
+		return c.getTo() > this.getFrom();
+	}
+
 }

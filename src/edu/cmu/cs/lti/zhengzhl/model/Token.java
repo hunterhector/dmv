@@ -56,7 +56,7 @@ public class Token {
 	}
 
 	/**
-	 * A simpler way, other fieds are not really used
+	 * A simpler way only initialze non-dummy ones
 	 * 
 	 * @param id
 	 * @param form
@@ -66,13 +66,13 @@ public class Token {
 	 * @param head
 	 * @param deprel
 	 */
-	public Token(int id, String form, String lemma, String cpos, String pos, int head, String deprel) {
-		this(id, form, lemma, cpos, pos, new String[0], head, deprel, null, "-");
+	public Token(int id, String form, String cpos, String pos, int head, String deprel) {
+		this(id, form, "-", cpos, pos, new String[0], head, deprel, null, "-");
 	}
 
 	public static Token fromConllString(String conllStr) {
 		String[] parts = conllStr.split("\\s");
-		return new Token(Integer.parseInt(parts[0]), parts[1], parts[2], parts[3], parts[4], Integer.parseInt(parts[6]), parts[7]);
+		return new Token(Integer.parseInt(parts[0]), parts[1], parts[3], parts[4], Integer.parseInt(parts[6]), parts[7]);
 	}
 
 	/**
