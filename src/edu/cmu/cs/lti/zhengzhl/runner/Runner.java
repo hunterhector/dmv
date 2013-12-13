@@ -27,7 +27,11 @@ public class Runner {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		List<List<Token>> sentences = InputReader.getSentences(new File("data/train.conll.txt"));
+		// List<List<Token>> sentences = InputReader.getSentences(new
+		// File("data/train.conll.txt"));
+
+		List<List<Token>> sentences = InputReader.getSentences(new File("data/test.conll"));
+
 		System.out.println(sentences.size());
 
 		Grammar naiveGrammar = new Grammar(0, sentences);
@@ -37,7 +41,7 @@ public class Runner {
 
 		ViterbiParseDecode decoder = new ViterbiParseDecode(emGrammar);
 
-		PrintWriter writer = new PrintWriter("data/train_output.txt");
+		PrintWriter writer = new PrintWriter("data/test_output.txt");
 
 		for (List<Token> sentence : sentences) {
 			int[] headPostions = decoder.depParse(sentence);

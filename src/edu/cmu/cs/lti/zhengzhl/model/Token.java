@@ -108,8 +108,8 @@ public class Token {
 	 * @return
 	 */
 	public String getPredicted() {
-		String predicted = String.format("%d\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s", id, form, lemma, cpos, pos, featureJoiner.join(features),
-				predictedHead, deprel, phead == null ? "-" : phead.toString(), pDeprel);
+		String predicted = String.format("%d\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s", id, form, lemma, cpos, pos, "_", predictedHead, deprel,
+				phead == null ? "_" : phead.toString(), pDeprel);
 		return predicted;
 	}
 
