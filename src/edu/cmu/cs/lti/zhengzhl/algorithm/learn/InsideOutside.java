@@ -34,19 +34,22 @@ public class InsideOutside {
 
 	Joiner dollarJoiner = Joiner.on("$");
 
-	double aggregatedLogLikelyhood = 0;
+	double sentencell = 0;
+	double aggregateSentencell = 0;
+	double previousSentll = Double.NEGATIVE_INFINITY;
 
 	public InsideOutside(Grammar grammar) {
 		this.grammar = grammar;
-		System.err.println("Inside outside initialized");
+		System.out.println("Inside outside initialized");
 	}
 
 	public void runInsideOutside(List<List<Token>> sentences) {
 		grammar.cleanStatistics();
 		int iter = 1;
-		int maxIter = 1;
+		int maxIter = 4;
 		while (iter <= maxIter) {
-			System.out.println("Iterration " + iter);
+			aggregateSentencell = 0;
+			System.out.println("Iteration " + iter);
 			iter++;
 
 			int counter = 0;
@@ -65,13 +68,13 @@ public class InsideOutside {
 				firstLayerUnariesAlpha(sentLength);
 				calInsideProbability(sentLength);
 
-				 System.err.println("Alpha contents");
-				 System.err.println("Not sealed");
-				 printChartContent(notSealedChartAlpha);
-				 System.err.println("Half sealed");
-				 printChartContent(halfSealedChartAlpha);
-				 System.err.println("sealed");
-				 printChartContent(sealedChartAlpha);
+				// System.err.println("Alpha contents");
+				// System.err.println("Not sealed");
+				// printChartContent(notSealedChartAlpha);
+				// System.err.println("Half sealed");
+				// printChartContent(halfSealedChartAlpha);
+				// System.err.println("sealed");
+				// printChartContent(sealedChartAlpha);
 
 				// System.err.println("Alpha sizes");
 				// System.err.println("Not sealed");
@@ -84,13 +87,13 @@ public class InsideOutside {
 				calOutsideProbability(sentLength);
 				firstLayerUnariesBeta(sentLength);
 
-				System.err.println("Beta contents");
-				System.err.println("Not sealed");
-				printChartContent(notSealedChartBeta);
-				System.err.println("sealed");
-				printChartContent(sealedChartBeta);
-				System.err.println("Half sealed");
-				printChartContent(halfSealedChartBeta);
+				// System.err.println("Beta contents");
+				// System.err.println("Not sealed");
+				// printChartContent(notSealedChartBeta);
+				// System.err.println("sealed");
+				// printChartContent(sealedChartBeta);
+				// System.err.println("Half sealed");
+				// printChartContent(halfSealedChartBeta);
 
 				// System.err.println("Beta sizes");
 				// System.err.println("Not sealed");
@@ -103,14 +106,34 @@ public class InsideOutside {
 				Map<NonTerminal, Double>[][] sealedExpectedCounts = calExpectedCount(sealedChartAlpha, sealedChartBeta, sentLength);
 				Map<NonTerminal, Double>[][] halfSealedExpectedCounts = calExpectedCount(halfSealedChartAlpha, halfSealedChartBeta, sentLength);
 				Map<NonTerminal, Double>[][] unSealedExpectedCounts = calExpectedCount(notSealedChartAlpha, notSealedChartBeta, sentLength);
+
 				grammar.updateStopStatistics(ntSent, sealedExpectedCounts, halfSealedExpectedCounts, unSealedExpectedCounts);
+				// grammar.updateLeftAttachStatistics(ntSent,
+				// halfSealedChartAlpha, halfSealedChartAlpha,
+				// halfSealedChartBeta, halfSealedExpectedCounts,
+				// sentencell);
+				// grammar.updateRightStatistics(ntSent, halfSealedChartAlpha,
+				// notSealedChartAlpha, notSealedChartBeta,
+				// unSealedExpectedCounts,
+				// sentencell);
+				aggregateSentencell += sentencell;
 
 				counter++;
-				if (counter >= 2)
-					break;// play with a few sentence first
+
+				if (counter % 500 == 0) {
+					System.err.println(counter + " ... ");
+				}
+				// if (counter >= 2)
+				// break;// play with a few sentence first
 			}
+
+			// if (sentencell < previousSentll || (sentencell - previousSentll)
+			// / sentencell < 0.1) {
+			// break;
+			// }
+
 			grammar.reestimate();
-			System.out.println("Sum of log likelihood over sentences :" + aggregatedLogLikelyhood);
+			System.out.println("Sum of log likelihood over sentences :" + aggregateSentencell);
 		}
 	}
 
@@ -197,7 +220,7 @@ public class InsideOutside {
 							for (NonTerminal child : childAlpha.keySet()) {
 								double attachProb = grammar.getAttachmentProb(head, child);
 								double nonStopProb = grammar.getNonStopProb(head);
-	 							double alphaLeft = headAlpha.get(head).getMarginalLogProb();
+								double alphaLeft = headAlpha.get(head).getMarginalLogProb();
 								double alphaRight = childAlpha.get(child).getMarginalLogProb();
 								// mark has child here
 								semiringPlus(notSealedChartAlpha[i][j], attachProb + nonStopProb + alphaLeft + alphaRight, getHasChildVersion(head),
@@ -254,7 +277,7 @@ public class InsideOutside {
 			NonTerminal sealedStop = halfSealedStop.makeSealed();
 			double marginalProb = halfSealedChartAlpha[0][sentLength].get(halfSealedStop).getMarginalLogProb();
 			sealedChartAlpha[0][sentLength].put(sealedStop, new ChartCell(0, sentLength, sealedStop, marginalProb));
-			aggregatedLogLikelyhood += marginalProb;
+			sentencell = marginalProb;
 		}
 	}
 
@@ -368,15 +391,11 @@ public class InsideOutside {
 					ChartCell betaCell = betaChart[i][j].get(nt);
 					ChartCell alphaCell = alphaEntry.getValue();
 
-					expectedCountChart[i][j].put(nt, alphaCell.getMarginalLogProb() * betaCell.getMarginalLogProb() / aggregatedLogLikelyhood);
+					expectedCountChart[i][j].put(nt, alphaCell.getMarginalLogProb() + betaCell.getMarginalLogProb() - sentencell);
 				}
 			}
 		}
 		return expectedCountChart;
-	}
-
-	private void calHelperW() {
-
 	}
 
 	private NonTerminal getHasChildVersion(NonTerminal nt) {

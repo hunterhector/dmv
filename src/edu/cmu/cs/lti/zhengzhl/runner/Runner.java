@@ -5,8 +5,10 @@ package edu.cmu.cs.lti.zhengzhl.runner;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 
+import edu.cmu.cs.lti.zhengzhl.algorithm.decode.ViterbiParseDecode;
 import edu.cmu.cs.lti.zhengzhl.algorithm.learn.InsideOutside;
 import edu.cmu.cs.lti.zhengzhl.io.InputReader;
 import edu.cmu.cs.lti.zhengzhl.model.Grammar;
@@ -18,7 +20,7 @@ import edu.cmu.cs.lti.zhengzhl.model.Token;
  * @author Zhengzhong Liu, Hector
  * 
  */
-public class TrainRunner {
+public class Runner {
 
 	/**
 	 * @param args
@@ -31,6 +33,26 @@ public class TrainRunner {
 		Grammar naiveGrammar = new Grammar(0, sentences);
 		InsideOutside io = new InsideOutside(naiveGrammar);
 		io.runInsideOutside(sentences);
+		Grammar emGrammar = io.getGrammar();
+
+		ViterbiParseDecode decoder = new ViterbiParseDecode(emGrammar);
+
+		PrintWriter writer = new PrintWriter("data/train_output.txt");
+
+		for (List<Token> sentence : sentences) {
+			int[] headPostions = decoder.depParse(sentence);
+
+			for (Token token : sentence) {
+				token.setPredictedHead(headPostions[token.getId()]);
+				if (!token.getIsRoot()) {
+					writer.println(token.getPredicted());
+				}
+			}
+
+			writer.println();
+		}
+
+		writer.close();
 	}
 
 }

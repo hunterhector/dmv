@@ -40,6 +40,14 @@ public class Grammar {
 
 	private Table<String, Direction, Double> noChildStopDenominator;
 
+	// use to reestimate left attach
+	private Table<String, String, Double> leftAttachNominator;
+	private Table<String, String, Double> leftAttachDenominator;
+
+	// use to reestimate right attach
+	private Table<String, String, Double> rightAttachNominator;
+	private Table<String, String, Double> rightAttachDenominator;
+
 	public Grammar(int initializationMethod, List<List<Token>> sentences) {
 		hasChildStopProbs = HashBasedTable.create();
 		noChildStopProbs = HashBasedTable.create();
@@ -62,6 +70,10 @@ public class Grammar {
 		hasChildStopDenominator = HashBasedTable.create();
 		noChildStopNominator = HashBasedTable.create();
 		noChildStopDenominator = HashBasedTable.create();
+		leftAttachNominator = HashBasedTable.create();
+		leftAttachDenominator = HashBasedTable.create();
+		rightAttachNominator = HashBasedTable.create();
+		rightAttachDenominator = HashBasedTable.create();
 	}
 
 	public void reestimate() {
@@ -69,13 +81,34 @@ public class Grammar {
 			double nominator = cell.getValue();
 			double denominator = hasChildStopDenominator.get(cell.getRowKey(), cell.getColumnKey());
 
-			hasChildStopProbs.put(cell.getRowKey(), cell.getColumnKey(), nominator - denominator);
+			if (nominator > denominator) {
+				hasChildStopProbs.put(cell.getRowKey(), cell.getColumnKey(), -0.0001);
+			} else
+				hasChildStopProbs.put(cell.getRowKey(), cell.getColumnKey(), nominator - denominator);
 		}
 
 		for (Cell<String, Direction, Double> cell : noChildStopNominator.cellSet()) {
 			double nominator = cell.getValue();
 			double denominator = noChildStopDenominator.get(cell.getRowKey(), cell.getColumnKey());
-			noChildStopProbs.put(cell.getRowKey(), cell.getColumnKey(), nominator - denominator);
+
+			if (nominator > denominator) {
+				noChildStopProbs.put(cell.getRowKey(), cell.getColumnKey(), -0.0001);
+			} else
+				noChildStopProbs.put(cell.getRowKey(), cell.getColumnKey(), nominator - denominator);
+		}
+
+		for (Cell<String, String, Double> cell : leftAttachNominator.cellSet()) {
+			double nominator = cell.getValue();
+			double denominator = leftAttachDenominator.get(cell.getRowKey(), cell.getColumnKey());
+			System.out.println("Update " + cell.getRowKey() + " " + cell.getColumnKey());
+			leftAttachments.put(cell.getRowKey(), cell.getColumnKey(), nominator - denominator);
+		}
+
+		for (Cell<String, String, Double> cell : rightAttachNominator.cellSet()) {
+			double nominator = cell.getValue();
+			double denominator = rightAttachDenominator.get(cell.getRowKey(), cell.getColumnKey());
+			System.out.println("Update right " + cell.getRowKey() + " " + cell.getColumnKey());
+			rightAttachments.put(cell.getRowKey(), cell.getColumnKey(), nominator - denominator);
 		}
 	}
 
@@ -88,7 +121,7 @@ public class Grammar {
 
 	protected void harmonicInitialization(List<List<Token>> sentences) {
 		System.out.println("Harmonic initialization");
-		
+
 	}
 
 	public double getStopProb(NonTerminal nt) {
@@ -130,6 +163,8 @@ public class Grammar {
 			throw new IllegalArgumentException("Head must not be sealed and child must be sealed");
 		}
 
+		// System.out.println(head + " request " + child);
+
 		return head.getDirection().equals(Direction.LEFT) ? getAttachmentProb(head.getSymbol(), child.getSymbol(), leftAttachments)
 				: getAttachmentProb(head.getSymbol(), child.getSymbol(), rightAttachments);
 	}
@@ -148,6 +183,112 @@ public class Grammar {
 		}
 	}
 
+	public void updateRightStatistics(List<ChartCell> sentence, Map<NonTerminal, ChartCell>[][] sealedChartAlpha,
+			Map<NonTerminal, ChartCell>[][] notSealedChartAlpha, Map<NonTerminal, ChartCell>[][] notSealedChartBeta,
+			Map<NonTerminal, Double>[][] unSealedExpectedCounts, double sentll) {
+		int sentLength = sentence.size();
+		for (ChartCell cell : sentence) {
+			int loc_l = cell.getFrom();
+			int loc_r = cell.getTo();
+
+			// object creating might be slow, could refactor to pass in table
+			NonTerminal unSealedHead = cell.getNonTerminal();
+
+			String symbol = unSealedHead.getSymbol();
+
+			for (int i = 0; i <= loc_l; i++) {
+				for (int j = loc_r + 1; j < sentLength; j++) {
+					for (String rightAttachCanddidateSymbol : rightAttachments.row(symbol).keySet()) {
+						// cal w_s
+						if (notSealedChartBeta[i][j].containsKey(unSealedHead)) {
+							double outsideProb = notSealedChartBeta[i][j].get(unSealedHead).getMarginalLogProb();
+							double attachProb = rightAttachments.get(symbol, rightAttachCanddidateSymbol);
+
+							for (int k = i + 1; k < j; k++) {
+
+								double nonStopProb;
+								if (unSealedHead.getId() - 1 != k) {
+									nonStopProb = getNonStopProb(unSealedHead.getHasChildVersion());
+								} else {
+									nonStopProb = getNonStopProb(unSealedHead);
+								}
+
+								if (notSealedChartAlpha[i][k].containsKey(unSealedHead)) {
+									double insideHeadProb = notSealedChartAlpha[i][k].get(unSealedHead).getMarginalLogProb();
+									for (int rightWordIndex = k; rightWordIndex < j; rightWordIndex++) {
+										ChartCell rightWord = sentence.get(rightWordIndex);
+										NonTerminal rightWordSealed = rightWord.getNonTerminal().makeHalfSealed().makeSealed();
+
+										if (sealedChartAlpha[k][j].containsKey(rightWordSealed)) {
+											double rightWordInsideProb = sealedChartAlpha[k][j].get(rightWordSealed).getMarginalLogProb();
+											aggregateTable(rightAttachNominator, symbol, rightAttachCanddidateSymbol, nonStopProb + attachProb
+													+ rightWordInsideProb + insideHeadProb + outsideProb - sentll);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+		}
+	}
+
+	public void updateLeftAttachStatistics(List<ChartCell> sentence, Map<NonTerminal, ChartCell>[][] halfSealedChartAlpha,
+			Map<NonTerminal, ChartCell>[][] sealedChartAlpha, Map<NonTerminal, ChartCell>[][] halfSealedChartBeta,
+			Map<NonTerminal, Double>[][] halfSealedExpectedCounts, double sentll) {
+		int sentLength = sentence.size();
+		for (ChartCell cell : sentence) {
+			int loc_l = cell.getFrom();
+			int loc_r = cell.getTo();
+
+			// object creating might be slow, could refactor to pass in table
+			NonTerminal unSealedHead = cell.getNonTerminal();
+			NonTerminal halfSealedHead = unSealedHead.makeHalfSealed();
+
+			String symbol = unSealedHead.getSymbol();
+
+			for (int i = 0; i < loc_l; i++) {
+				for (int j = loc_r; j < sentLength; j++) {
+					for (String leftAttachCandidiateSymbol : leftAttachments.row(symbol).keySet()) {
+						// cal w_s
+						if (halfSealedChartBeta[i][j].containsKey(halfSealedHead)) {
+							double outsideProb = halfSealedChartBeta[i][j].get(halfSealedHead).getMarginalLogProb();
+							double attachProb = leftAttachments.get(symbol, leftAttachCandidiateSymbol);
+
+							for (int k = i + 1; k < j; k++) {
+								if (halfSealedChartAlpha[k][j].containsKey(halfSealedHead)) {
+									double insideHeadProb = halfSealedChartAlpha[k][j].get(halfSealedHead).getMarginalLogProb();
+
+									double nonStopProb;
+									if (halfSealedHead.getId() != k) {
+										nonStopProb = getNonStopProb(halfSealedHead.getHasChildVersion());
+									} else {
+										nonStopProb = getNonStopProb(halfSealedHead);
+									}
+
+									for (int leftWordIndex = i; leftWordIndex < k; leftWordIndex++) {
+										ChartCell leftWord = sentence.get(leftWordIndex);
+										NonTerminal leftWordSealed = leftWord.getNonTerminal().makeHalfSealed().makeSealed();
+										if (sealedChartAlpha[i][k].containsKey(leftWordSealed)) {
+											double leftWordInside = sealedChartAlpha[i][k].get(leftWordSealed).getMarginalLogProb();
+											aggregateTable(leftAttachNominator, symbol, leftAttachCandidiateSymbol, nonStopProb + attachProb
+													+ leftWordInside + insideHeadProb + outsideProb - sentll);
+										}
+									}
+								}
+							}
+						}
+
+						// denominator
+						aggregateTable(leftAttachDenominator, symbol, leftAttachCandidiateSymbol, halfSealedExpectedCounts[i][j].get(halfSealedHead));
+					}
+				}
+			}
+		}
+	}
+
 	public void updateStopStatistics(List<ChartCell> sentence, Map<NonTerminal, Double>[][] sealedExpectedCounts,
 			Map<NonTerminal, Double>[][] halfSealedExpectedCounts, Map<NonTerminal, Double>[][] unSealedExpectedCounts) {
 		int sentLength = sentence.size();
@@ -155,7 +296,7 @@ public class Grammar {
 			int loc_l = cell.getFrom();
 			int loc_r = cell.getTo();
 
-			// object creationg might be slow, could refactor to pass in table
+			// object creating might be slow, could refactor to pass in table
 			NonTerminal unSealedHead = cell.getNonTerminal();
 			NonTerminal halfSealedHead = unSealedHead.makeHalfSealed();
 			NonTerminal sealedHead = halfSealedHead.makeSealed();
