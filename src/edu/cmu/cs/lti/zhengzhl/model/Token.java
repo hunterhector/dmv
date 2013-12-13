@@ -12,6 +12,7 @@ import com.google.common.base.Joiner;
  * 
  */
 public class Token {
+	public static final String stopMarker = "<STOP>";
 
 	private int id;
 	private String form;
@@ -23,6 +24,8 @@ public class Token {
 	private String deprel;
 	private Integer phead;
 	private String pDeprel;
+
+	private boolean isRoot;
 
 	private int predictedHead;
 
@@ -42,7 +45,8 @@ public class Token {
 	 * @param phead
 	 * @param pDeprel
 	 */
-	public Token(int id, String form, String lemma, String cpos, String pos, String[] features, int head, String deprel, Integer phead, String pDeprel) {
+	public Token(int id, String form, String lemma, String cpos, String pos, String[] features, int head, String deprel, Integer phead,
+			String pDeprel, boolean isRoot) {
 		this.id = id;
 		this.form = form;
 		this.lemma = lemma;
@@ -53,6 +57,7 @@ public class Token {
 		this.deprel = deprel;
 		this.phead = phead;
 		this.pDeprel = pDeprel;
+		this.isRoot = isRoot;
 	}
 
 	/**
@@ -67,12 +72,22 @@ public class Token {
 	 * @param deprel
 	 */
 	public Token(int id, String form, String cpos, String pos, int head, String deprel) {
-		this(id, form, "-", cpos, pos, new String[0], head, deprel, null, "-");
+		this(id, form, "-", cpos, pos, new String[0], head, deprel, null, "-", false);
 	}
 
 	public static Token fromConllString(String conllStr) {
 		String[] parts = conllStr.split("\\s");
 		return new Token(Integer.parseInt(parts[0]), parts[1], parts[3], parts[4], Integer.parseInt(parts[6]), parts[7]);
+	}
+
+	/**
+	 * Return a token representing the root (STOP symbol)
+	 * 
+	 * @param sentLength
+	 * @return
+	 */
+	public static Token stop() {
+		return new Token(0, stopMarker, stopMarker, stopMarker, stopMarker, new String[0], -1, null, null, "-", true);
 	}
 
 	/**
@@ -96,6 +111,10 @@ public class Token {
 		String predicted = String.format("%d\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s", id, form, lemma, cpos, pos, featureJoiner.join(features),
 				predictedHead, deprel, phead == null ? "-" : phead.toString(), pDeprel);
 		return predicted;
+	}
+
+	public boolean getIsRoot() {
+		return isRoot;
 	}
 
 	public int getId() {

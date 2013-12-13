@@ -6,8 +6,7 @@ package edu.cmu.cs.lti.zhengzhl.model;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
-import edu.cmu.cs.lti.zhengzhl.model.NonTerminal.Direction;
-import edu.cmu.cs.lti.zhengzhl.model.NonTerminal.LifeCycle;
+import edu.cmu.cs.lti.zhengzhl.utils.Utils;
 
 /**
  * Represent a general CKY cell, which does not need to conform CNF
@@ -49,18 +48,19 @@ public class ChartCell implements Comparable<ChartCell> {
 	 * @param children
 	 */
 	public ChartCell(int i, int j, NonTerminal nt, double logProb, ChartCell... children) {
+		if (logProb > 0) {
+			throw new IllegalArgumentException("Log probability cannot be larger than 0, at position " + i + " " + j + " " + logProb);
+		}
 		this.span = new Span(i, j);
 		this.nonTerminal = nt;
 		this.children = children;
-
 		this.marginalLogProb = logProb;
-		for (ChartCell c : children) {
-			this.marginalLogProb += c.getMarginalLogProb();
-		}
 	}
 
-	public void aggregate(double logProb) {
-		this.marginalLogProb += logProb;
+	public void logAggregate(double logProb) {
+		if (logProb > 0)
+			throw new IllegalArgumentException("Providing positive log probability");
+		marginalLogProb = Utils.logAdd(marginalLogProb, logProb);
 	}
 
 	public boolean hasNoChildren() {
@@ -145,6 +145,11 @@ public class ChartCell implements Comparable<ChartCell> {
 
 	public boolean onTheLeft(ChartCell c) {
 		return c.getTo() > this.getFrom();
+	}
+
+	@Override
+	public String toString() {
+		return String.format("[%s]:%.2f", nonTerminal, marginalLogProb);
 	}
 
 }

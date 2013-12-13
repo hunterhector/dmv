@@ -30,6 +30,7 @@ public class InputReader {
 		String strLine;
 		while ((strLine = br.readLine()) != null) {
 			if (strLine.trim().isEmpty()) {
+				sentence.add(Token.stop());
 				sentences.add(sentence);
 				sentence = new ArrayList<Token>();
 			} else {

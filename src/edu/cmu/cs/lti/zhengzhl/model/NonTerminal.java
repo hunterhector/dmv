@@ -20,6 +20,10 @@ public class NonTerminal implements Comparable<NonTerminal> {
 
 	private int id;
 
+	private boolean isRoot = false;
+
+	private NonTerminal previousLifeCycleNt = null;
+
 	public enum Direction {
 		LEFT, RIGHT, NONE
 	}
@@ -28,36 +32,70 @@ public class NonTerminal implements Comparable<NonTerminal> {
 		NOT_SEALED, HALF_SEALED, SEALED
 	}
 
-	public NonTerminal(String symbol, boolean hasChild, LifeCycle lc, Direction d, int id) {
+	public NonTerminal(String symbol, boolean hasChild, LifeCycle lc, Direction d, int id, boolean isRoot) {
 		this.symbol = symbol;
 		this.hasChild = hasChild;
 		this.lifeCyle = lc;
 		this.direction = d;
 		this.id = id;
+		this.isRoot = isRoot;
+	}
+
+	public NonTerminal(String symbol, boolean hasChild, LifeCycle lc, Direction d, int id) {
+		this(symbol, hasChild, lc, d, id, false);
 	}
 
 	public static NonTerminal fromToken(Token token) {
+		if (token.getIsRoot()) {
+			return new NonTerminal(token.getPos(), false, LifeCycle.NOT_SEALED, Direction.RIGHT, token.getId(), true);
+		}
+
 		return new NonTerminal(token.getPos(), false, LifeCycle.NOT_SEALED, Direction.RIGHT, token.getId());
 	}
 
-	public static NonTerminal getHasChildVersion(NonTerminal nt) {
-		return new NonTerminal(nt.getSymbol(), true, nt.getLifeCyle(), nt.getDirection(), nt.getId());
+	/**
+	 * HasChild version will share the same hash code and equals(), so that they
+	 * will be matched if put into a map
+	 * 
+	 * @return
+	 */
+	public NonTerminal getHasChildVersion() {
+		NonTerminal after = new NonTerminal(this.getSymbol(), true, this.getLifeCyle(), this.getDirection(), this.getId());
+		after.setPrevoiusLifeCycle(this.fromPreviousLifeCycle());
+		return after;
 	}
 
-	public static NonTerminal makeHalfSealed(NonTerminal nt) {
-		if (nt.getLifeCyle().equals(LifeCycle.NOT_SEALED)) {
-			return new NonTerminal(nt.getSymbol(), false, LifeCycle.HALF_SEALED, Direction.LEFT, nt.getId());
+	public NonTerminal makeHalfSealed() {
+		if (this.getLifeCyle().equals(LifeCycle.NOT_SEALED)) {
+			NonTerminal after = new NonTerminal(this.getSymbol(), false, LifeCycle.HALF_SEALED, Direction.LEFT, this.getId());
+			after.setPrevoiusLifeCycle(this);
+			return after;
 		} else {
 			throw new IllegalArgumentException("Cannot only make not_sealed to half_sealed");
 		}
 	}
 
-	public static NonTerminal makeSealed(NonTerminal nt) {
-		if (nt.getLifeCyle().equals(LifeCycle.HALF_SEALED)) {
-			return new NonTerminal(nt.getSymbol(), false, LifeCycle.SEALED, Direction.NONE, nt.getId());
+	public NonTerminal makeSealed() {
+		if (this.getLifeCyle().equals(LifeCycle.HALF_SEALED)) {
+			NonTerminal after = new NonTerminal(this.getSymbol(), false, LifeCycle.SEALED, Direction.NONE, this.getId());
+			after.setPrevoiusLifeCycle(this);
+			return after;
 		} else {
+			System.err.println(this);
 			throw new IllegalArgumentException("Cannot only make half_sealed to sealed");
 		}
+	}
+
+	private void setPrevoiusLifeCycle(NonTerminal nt) {
+		previousLifeCycleNt = nt;
+	}
+
+	public NonTerminal fromPreviousLifeCycle() {
+		return previousLifeCycleNt;
+	}
+
+	public boolean getIsRoot() {
+		return isRoot;
 	}
 
 	public int getId() {
@@ -115,6 +153,11 @@ public class NonTerminal implements Comparable<NonTerminal> {
 		}
 
 		return false;
+	}
+
+	@Override
+	public String toString() {
+		return String.format("%d:%s-(%s,%s)", id, symbol, direction, lifeCyle);
 	}
 
 }
